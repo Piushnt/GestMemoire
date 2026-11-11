@@ -35,7 +35,7 @@
                     Proposer un thème
                 </a>
             <% } %>
-            <% if ("PROGRAM_MANAGER".equals(role) || "ADMIN".equals(role)) { %>
+            <% if ("TEACHER".equals(role) || "PROGRAM_MANAGER".equals(role) || "ADMIN".equals(role)) { %>
                 <a class="nav-link" href="<%= request.getContextPath() %>/themes/review">
                     Validation des thèmes
                 </a>
@@ -106,7 +106,7 @@
                 </a>
             <% } %>
 
-            <% if ("PROGRAM_MANAGER".equals(role) || "ADMIN".equals(role)) { %>
+            <% if ("TEACHER".equals(role) || "PROGRAM_MANAGER".equals(role) || "ADMIN".equals(role)) { %>
                 <a class="action-card" href="<%= request.getContextPath() %>/themes/review">
                     <span class="action-icon">✓</span>
                     <div>
@@ -122,7 +122,7 @@
                     <span class="action-icon">◎</span>
                     <div>
                         <h3>Espace enseignant</h3>
-                        <p>Les outils d’encadrement et de relecture seront ajoutés à l’étape suivante.</p>
+                        <p>Consultez la validation des thèmes pour examiner les propositions en mémoire.</p>
                     </div>
                 </article>
             <% } %>

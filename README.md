@@ -1,39 +1,53 @@
-# UATM-GS — Gestion des soutenances et des mémoires
+# UATM-GS — prototype académique en mémoire
 
-Prototype Jakarta EE / JSP pour présenter les espaces par rôle et la comparaison de sujets avec l’indice de Jaccard.
+Application de démonstration construite avec des Servlets, JSP et Java standard. Les fonctionnalités de connexion, proposition, comparaison et décision ne nécessitent ni datasource, ni Supabase, ni JPA, ni EJB.
 
-## Connexion de démonstration
+## Parcours
 
-La route `/login` n’interroge plus `Users`, Supabase ni une table d’authentification. L’utilisateur saisit un nom et choisit un espace (Étudiant, Encadreur, Responsable de filière ou Administrateur). `LoginServlet` vérifie seulement que ces deux champs sont fournis et que le rôle appartient à la liste connue, puis les conserve dans la session HTTP (`userName`, `role`, `demoLogin`). Le tableau de bord adapte son contenu à ces attributs. La déconnexion invalide la session.
+1. **Connexion simulée** (`/login`) : l’utilisateur saisit un nom et sélectionne un espace. `LoginServlet` crée une `HttpSession` contenant `userName`, `role` et `demoLogin`, puis redirige vers `/dashboard`. Aucun compte, mot de passe ou enregistrement de base n’est vérifié.
+2. **Navigation par rôle** : `DashboardServlet` vérifie la session. Le tableau de bord affiche « Bonjour, [nom] » et montre les raccourcis étudiant ou encadreur/administrateur correspondant au rôle.
+3. **Proposition de thème** (`/themes/proposer`) : l’étudiant saisit un titre, une description et trois à cinq mots-clés distincts. La servlet forme un texte de comparaison, demande au magasin partagé de calculer le meilleur score et ajoute la proposition.
+4. **Décision** (`/themes/review`) : un encadreur, responsable ou administrateur voit les propositions en attente et peut les valider ou les rejeter. La décision change l’état en mémoire.
+5. **Déconnexion** (`/logout`) : invalide la session HTTP.
 
-C’est une simulation d’interface, pas une authentification : toute personne peut choisir le profil Administrateur. Ne pas utiliser ce mode pour protéger des données réelles ni exposer l’application sur Internet. L’inscription et la dépendance BCrypt précédemment ajoutées ont été retirées.
+## Structure Java
 
-## Comparaison Jaccard en mode démo
+| Fichier | Responsabilité |
+|---|---|
+| `LoginServlet.java` | Connexion simulée, validation du rôle et création de session. |
+| `SessionUtil.java` | Vérification de la session et des rôles autorisés par route. |
+| `DashboardServlet.java` | Protège le tableau de bord. |
+| `LogoutServlet.java` | Ferme la session. |
+| `JaccardUtil.java` | Normalise les chaînes, extrait les tokens et calcule l’indice de Jaccard. |
+| `ThemeProposal.java` | Modèle Java simple d’une proposition et de son état. |
+| `ThemeStore.java` | Liste partagée dans l’application ; sérialise l’ajout, le calcul de similarité et les décisions avec des méthodes synchronisées. |
+| `ThemeStoreListener.java` | Crée le magasin lors du démarrage de l’application Web. |
+| `ThemeProposalServlet.java` | Valide et ajoute les propositions au magasin mémoire. |
+| `ThemeReviewServlet.java` | Liste et décide les propositions en attente dans le même magasin. |
 
-`JaccardUtil` normalise les mots (minuscules, accents), crée des ensembles sans doublons et calcule : **100 × intersection / union**. `ThemeProposalServlet` réutilise cette classe. Quand la session porte `demoLogin=true`, les mots-clés sont comparés à quelques sujets d’exemple ainsi qu’aux propositions précédentes de la même session. Aucun accès à `EntityManager`, aucune écriture Supabase et aucune validation persistante ne sont effectués dans ce chemin. Le résultat précise qu’il s’agit d’une simulation.
+Les vues restent sous `src/main/webapp/WEB-INF/views` et les styles dans `src/main/webapp/css/app.css`. Les entités/facades générées, EJB de persistance, configuration JPA, ressource REST et classes compilées suivies précédemment ont été retirés : aucune injection `EntityManager` ou `@EJB` ne reste dans le parcours applicatif.
 
-Les thèmes de la session sont temporaires : ils disparaissent à la déconnexion ou à l’expiration de la session et ne sont pas partagés entre utilisateurs. Le seuil indicatif de 40 % classe le résultat en `ARBITRATION` ou `SUBMITTED` pour la démonstration seulement. Les rôles Encadreur/Administrateur voient un écran vide explicite en mode simulation ; les décisions sont désactivées.
+## Indice de Jaccard
 
-## Autres fichiers backend
+`JaccardUtil.motsCles` met le texte en minuscules, retire les accents et sépare les tokens aux frontières de ponctuation ou d’espaces. Les doublons sont supprimés par un `Set`. Pour deux thèmes A et B :
 
-- `LoginServlet.java` : crée la session de démonstration et redirige vers `/dashboard`.
-- `SessionUtil.java` : contrôle la présence d’une session de démonstration et le rôle demandé.
-- `JaccardUtil.java` : normalisation des mots-clés et calcul de l’indice.
-- `ThemeProposalServlet.java` : validation des mots-clés et calcul de similarité ; chemin simulé sans base.
-- `ThemeReviewServlet.java` : écran de revue et refus des décisions simulées.
-- `LogoutServlet.java` : invalide la session.
-- `persistence.xml` et `scripts/configure-supabase-datasource.cli` : configuration PostgreSQL/Supabase conservée pour les fonctionnalités JPA réelles du projet.
+**J(A,B) = 100 × |tokens(A) ∩ tokens(B)| / |tokens(A) ∪ tokens(B)|**
 
-## Comparer des thèmes sans erreurs de base
+Le système compare le texte combiné (titre, description, mots-clés) de la nouvelle proposition à toutes celles du magasin partagé et conserve le maximum. À partir de **40 %**, le statut indicatif est `ARBITRATION`; autrement il est `SUBMITTED`. Ce seuil est une règle de démonstration, pas une décision académique automatique.
 
-Pour une soutenance ou un prototype hors ligne, la solution la plus simple est le catalogue d’exemples en mémoire utilisé dans le chemin simulé. Une approche plus propre si le projet grandit consiste à séparer la comparaison pure (`JaccardUtil`) de l’accès aux données : un petit `ThemeRepository` fournit soit une liste en mémoire pour les tests et la démo, soit des thèmes PostgreSQL via JPA. On teste ainsi l’algorithme sans démarrer Supabase et on garde une seule implémentation Jaccard. Pour un usage réel, il faut tout de même configurer et tester la datasource ; capturer une erreur SQL puis continuer silencieusement masquerait un défaut de configuration.
+## Démarrer
 
-## Compilation
-
-Depuis la racine du projet :
+Compiler le WAR avec Maven :
 
 ```text
 mvn clean package
 ```
 
-Le WAR nécessite WildFly/Jakarta EE. Les entités et façades générées dans `com.mycompany.entities` n’ont pas été modifiées. La simulation de login ne nécessite pas Supabase, mais les anciens chemins JPA du projet et toute persistance réelle dépendent toujours de `java:/jdbc/SupabaseDS`.
+Déployer `target/GestionMemoire-1.0-SNAPSHOT.war` sur un serveur compatible Servlet 6.0 (par exemple une version WildFly compatible Jakarta EE 10). Le parcours décrit ici n’exige aucun pilote JDBC ni configuration WildFly de datasource.
+
+## Limites à connaître
+
+- La connexion est volontairement simulée : chacun peut sélectionner Administrateur. Elle ne doit jamais protéger des données réelles.
+- Le magasin est partagé par les sessions de la même instance de l’application, mais il n’est pas durable. Un redémarrage, redéploiement ou arrêt du serveur efface toutes les propositions et décisions.
+- Plusieurs instances de serveur ne partagent pas ce magasin mémoire.
+- Pour conserver les données durablement plus tard, l’approche conseillée est de garder `JaccardUtil` pur et de brancher un dépôt de données séparé, avec une implémentation mémoire pour les tests et une implémentation PostgreSQL/JPA pour la production. Il faudra alors réintroduire et tester la datasource explicitement ; la version actuelle est conçue pour la soutenance hors base.

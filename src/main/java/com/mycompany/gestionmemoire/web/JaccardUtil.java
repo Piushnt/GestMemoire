@@ -14,12 +14,12 @@ public final class JaccardUtil {
     if (texte == null || texte.isBlank()) {
       return Set.of();
     }
+
     String normalise =
         Normalizer.normalize(texte.toLowerCase(Locale.ROOT), Normalizer.Form.NFD)
             .replaceAll("\\p{M}", "");
-    return Arrays.stream(normalise.split("[,;\\s]+"))
-        .map(String::trim)
-        .filter(mot -> !mot.isEmpty())
+    return Arrays.stream(normalise.split("[^\\p{L}\\p{N}]+"))
+        .filter(mot -> !mot.isBlank())
         .collect(Collectors.toCollection(HashSet::new));
   }
 
@@ -28,9 +28,11 @@ public final class JaccardUtil {
     Set<String> ensembleB = motsCles(second);
     Set<String> union = new HashSet<>(ensembleA);
     union.addAll(ensembleB);
+
     if (union.isEmpty()) {
       return 0.0;
     }
+
     Set<String> intersection = new HashSet<>(ensembleA);
     intersection.retainAll(ensembleB);
     return (double) intersection.size() / union.size() * 100.0;
