@@ -1,0 +1,2 @@
+data-source add --name=SupabaseDS --jndi-name=java:/jdbc/SupabaseDS --driver-name=postgresql --connection-url="jdbc:postgresql://${env.SUPABASE_HOST}:${env.SUPABASE_PORT}/${env.SUPABASE_DB}?sslmode=require" --user-name="${env.SUPABASE_USER}" --password="${env.SUPABASE_PASSWORD}" --enabled=true
+data-source test-connection-in-pool --name=SupabaseDS
