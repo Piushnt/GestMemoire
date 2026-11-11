@@ -1,7 +1,8 @@
 <%@ page contentType="text/html; charset=UTF-8" pageEncoding="UTF-8" %>
 <%
     String erreur = (String) request.getAttribute("erreur");
-    String message = (String) request.getAttribute("message");
+    String nom = (String) request.getAttribute("nom");
+    String nomEchappe = nom == null ? "" : nom.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\"", "&quot;").replace("'", "&#39;");
 %>
 <!DOCTYPE html>
 <html lang="fr">
@@ -18,62 +19,43 @@
                 <span class="brand-mark">U</span>
                 <span>UATM<span class="brand-muted">-GS</span></span>
             </a>
-
             <div class="brand-copy">
                 <span class="eyebrow">ESPACE ACADÉMIQUE</span>
                 <h1>De l’idée à la soutenance, tout au même endroit.</h1>
-                <p>
-                    Suivez les propositions de thèmes, les mémoires et les étapes clés de votre parcours
-                    universitaire.
-                </p>
+                <p>Explorez les propositions de thèmes et la comparaison par indice de Jaccard.</p>
             </div>
-
-            <p class="brand-foot">Gestion des soutenances et des mémoires</p>
+            <p class="brand-foot">Mode démonstration — aucun compte ni mot de passe requis</p>
         </section>
 
         <section class="login-panel">
             <div class="login-form-wrap">
-                <span class="eyebrow">BON RETOUR</span>
-                <h2>Connexion</h2>
-                <p class="muted">Accédez à votre espace avec votre compte institutionnel.</p>
+                <span class="eyebrow">ACCÈS RAPIDE</span>
+                <h2>Connexion simulée</h2>
+                <p class="muted">Saisissez un nom et choisissez le profil à présenter.</p>
 
-                <% if (message != null) { %>
-                    <div class="alert alert-success" role="status"><%= message %></div>
-                <% } %>
                 <% if (erreur != null) { %>
                     <div class="alert alert-error" role="alert"><%= erreur %></div>
                 <% } %>
 
-                <form method="post"
-                      action="<%= request.getContextPath() %>/login"
-                      class="stack-form">
-                    <label for="email">Adresse e-mail</label>
-                    <input id="email"
-                           name="email"
-                           type="email"
-                           autocomplete="username"
-                           required
-                           maxlength="254"
-                           placeholder="nom@uatm.edu">
+                <form method="post" action="<%= request.getContextPath() %>/login" class="stack-form">
+                    <label for="name">Nom à afficher</label>
+                    <input id="name" name="name" type="text" autocomplete="name" required maxlength="160" value="<%= nomEchappe %>" placeholder="Ex. Amina Dupont">
 
-                    <label for="password">Mot de passe</label>
-                    <input id="password"
-                           name="password"
-                           type="password"
-                           autocomplete="current-password"
-                           required>
+                    <label for="role">Espace</label>
+                    <select id="role" name="role" required>
+                        <option value="STUDENT">Étudiant</option>
+                        <option value="TEACHER">Encadreur</option>
+                        <option value="PROGRAM_MANAGER">Responsable de filière</option>
+                        <option value="ADMIN">Administrateur</option>
+                    </select>
 
                     <button class="button button-primary button-wide" type="submit">
-                        Se connecter <span aria-hidden="true">→</span>
+                        Entrer dans l’espace <span aria-hidden="true">→</span>
                     </button>
                 </form>
-
-                <p class="register-link">
-                    Vous n’avez pas de compte ?
-                    <a href="<%= request.getContextPath() %>/register">Créer un compte</a>
-                </p>
                 <p class="form-note">
-                    L’accès est réservé aux comptes actifs enregistrés dans le système.
+                    Démonstration uniquement : le nom et le rôle ne sont pas vérifiés et ne doivent pas
+                    être utilisés pour protéger une application en production.
                 </p>
             </div>
         </section>

@@ -25,6 +25,15 @@ public class ThemeReviewServlet extends HttpServlet {
     if (!SessionUtil.connecter(request, response, SessionUtil.PROGRAM_MANAGER, SessionUtil.ADMIN)) {
       return;
     }
+    if (Boolean.TRUE.equals(request.getSession(false).getAttribute("demoLogin"))) {
+      request.setAttribute("themes", List.of());
+      request
+          .getSession(false)
+          .setAttribute(
+              "message", "Mode simulation : aucune proposition n’est stockée dans la base.");
+      request.getRequestDispatcher("/WEB-INF/views/review-themes.jsp").forward(request, response);
+      return;
+    }
     if (SessionUtil.aRole(request, SessionUtil.PROGRAM_MANAGER)) {
       Long programId = (Long) request.getSession(false).getAttribute("programId");
       if (programId == null) {
@@ -56,6 +65,11 @@ public class ThemeReviewServlet extends HttpServlet {
       throws ServletException, IOException {
     request.setCharacterEncoding("UTF-8");
     if (!SessionUtil.connecter(request, response, SessionUtil.PROGRAM_MANAGER, SessionUtil.ADMIN)) {
+      return;
+    }
+    if (Boolean.TRUE.equals(request.getSession(false).getAttribute("demoLogin"))) {
+      response.sendError(
+          HttpServletResponse.SC_CONFLICT, "Les décisions sont désactivées en mode simulation.");
       return;
     }
     Long id;

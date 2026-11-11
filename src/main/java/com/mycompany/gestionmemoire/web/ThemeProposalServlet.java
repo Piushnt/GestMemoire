@@ -13,6 +13,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
@@ -55,6 +56,53 @@ public class ThemeProposalServlet extends HttpServlet {
           "Le titre (180 caractères maximum), la description et 3 à 5 mots-clés distincts sont"
               + " obligatoires.");
       doGet(request, response);
+      return;
+    }
+    if (Boolean.TRUE.equals(request.getSession(false).getAttribute("demoLogin"))) {
+      List<String> themesExemples =
+          new ArrayList<>(
+              List.of(
+                  "java programmation web sécurité",
+                  "application mobile gestion données",
+                  "intelligence artificielle apprentissage automatique"));
+      Object themesSession = request.getSession(false).getAttribute("demoThemes");
+      if (themesSession instanceof List<?>) {
+        for (Object theme : (List<?>) themesSession) {
+          if (theme instanceof String) {
+            themesExemples.add((String) theme);
+          }
+        }
+      }
+
+      double similariteMax = 0.0;
+      for (String themeExistant : themesExemples) {
+        similariteMax = Math.max(similariteMax, JaccardUtil.calculer(motsCles, themeExistant));
+      }
+
+      List<String> themesSessionModifies = new ArrayList<>();
+      Object themesPrecedents = request.getSession(false).getAttribute("demoThemes");
+      if (themesPrecedents instanceof List<?>) {
+        for (Object theme : (List<?>) themesPrecedents) {
+          if (theme instanceof String) {
+            themesSessionModifies.add((String) theme);
+          }
+        }
+      }
+      themesSessionModifies.add(String.join(", ", mots));
+      request.getSession(false).setAttribute("demoThemes", themesSessionModifies);
+
+      BigDecimal similarite = BigDecimal.valueOf(similariteMax).setScale(2, RoundingMode.HALF_UP);
+      String statut = similariteMax >= SEUIL_SIMILARITE ? "ARBITRATION" : "SUBMITTED";
+      request
+          .getSession(false)
+          .setAttribute(
+              "message",
+              "Mode simulation — indice de Jaccard maximal : "
+                  + similarite.toPlainString()
+                  + " %. Statut indicatif : "
+                  + statut
+                  + ". Rien n’a été enregistré dans la base.");
+      response.sendRedirect(request.getContextPath() + "/themes/proposer");
       return;
     }
     Long programId = (Long) request.getSession(false).getAttribute("programId");

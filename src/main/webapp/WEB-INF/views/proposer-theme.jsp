@@ -85,8 +85,9 @@
                 <div class="info-box">
                     <span class="info-mark">i</span>
                     <p>
-                        Les thèmes existants de votre filière sont comparés avec l’indice de Jaccard.
-                        À partir de 40 % de similarité, la proposition est transmise en arbitrage.
+                        En mode démonstration, les mots-clés sont comparés à des exemples et aux
+                        propositions de cette session avec l’indice de Jaccard. À partir de 40 %, le
+                        résultat indicatif est classé en arbitrage. Rien n’est enregistré dans Supabase.
                     </p>
                 </div>
 
