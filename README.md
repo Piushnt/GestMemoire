@@ -23,6 +23,7 @@ Cette première étape ajoute l’authentification par session, une navigation a
 | `src/main/webapp/WEB-INF/views/review-themes.jsp` | Tableau de décision et formulaire de validation/rejet. |
 | `src/main/webapp/css/app.css` | Style commun externe et responsive. Aucun style CSS n’est embarqué dans les JSP. |
 | `src/main/resources/META-INF/persistence.xml` | Relie explicitement l’unité JTA à la datasource PostgreSQL JNDI `java:/jdbc/SupabaseDS` et interdit la génération de schéma Hibernate. |
+| `scripts/configure-supabase-datasource.cli` | Crée la datasource dans WildFly, puis teste la connexion avant déploiement du WAR. |
 | `pom.xml` | Ajout de jBCrypt, utilisé pour vérifier des empreintes BCrypt sans stocker ni comparer de mot de passe en clair. |
 
 ## Explication du fonctionnement
@@ -51,15 +52,19 @@ Le responsable ne reçoit que les sujets de sa filière pour lesquels le statut 
 
 ## Configuration indispensable avant exécution
 
-`src/main/resources/META-INF/persistence.xml` déclare l’unité `my_persistence_unit` en mode JTA et la relie explicitement à `java:/jdbc/SupabaseDS`. Le dialecte est PostgreSQL et `hibernate.hbm2ddl.auto=none` empêche Hibernate de créer ou modifier les tables. Aucun pilote, URL H2, fichier H2 ni datasource locale H2 n’est déclaré dans ce projet. Sans datasource portant exactement ce nom JNDI, le déploiement doit échouer plutôt que d’utiliser silencieusement une base H2 par défaut.
+`src/main/resources/META-INF/persistence.xml` déclare l’unité `my_persistence_unit` en mode JTA et référence explicitement `java:/jdbc/SupabaseDS`. Le dialecte est PostgreSQL et `hibernate.hbm2ddl.auto=none` empêche Hibernate de créer ou modifier les tables. Cette référence JNDI ne crée pas la datasource dans WildFly. L’erreur `jboss.naming.context.java.jdbc.SupabaseDS` signifie que le service de datasource ou son binding JNDI n’est pas installé sous ce nom, ou que son pilote PostgreSQL manque.
 
-Le dépôt ne contient ni configuration WildFly (`standalone.xml`) ni identifiants Supabase ; aucun serveur n’est actif dans l’environnement. Le nom JNDI ci-dessus est donc le nom attendu à créer dans WildFly, et non un nom détecté dans une configuration serveur existante. Dans la console CLI WildFly, après installation du pilote PostgreSQL sous le nom `postgresql`, créez la datasource en remplaçant les paramètres par ceux de Supabase :
+Un `jboss-web.xml` ne peut pas créer le service absent ; il ne ferait que déclarer une référence côté application. Il ne faut pas contourner le problème avec H2 : l’application a besoin de sa datasource PostgreSQL pour démarrer correctement. Le dépôt inclut maintenant `scripts/configure-supabase-datasource.cli`, qui crée précisément ce binding et teste la connexion. Le pilote JDBC PostgreSQL doit d’abord être installé dans WildFly et enregistré avec le nom `postgresql` (ou le nom du pilote indiqué dans le script doit être adapté).
 
-```text
-/subsystem=datasources/data-source=SupabaseDS:add(jndi-name="java:/jdbc/SupabaseDS",driver-name=postgresql,connection-url="jdbc:postgresql://HOST:5432/DATABASE?sslmode=require",user-name="DB_USER",password="DB_PASSWORD",enabled=true)
+Sous Windows, définissez les variables dans l’environnement du processus WildFly avant de le démarrer ou de le redémarrer : `SUPABASE_HOST`, `SUPABASE_PORT`, `SUPABASE_DB`, `SUPABASE_USER` et `SUPABASE_PASSWORD`. Utilisez les paramètres fournis dans Supabase → **Connect** ; le script utilise TLS (`sslmode=require`). Le port usuel de connexion directe est `5432`, mais utilisez le port fourni si vous passez par le pooler Supabase.
+
+Après le démarrage de WildFly, ouvrez une deuxième fenêtre PowerShell à la racine du projet et lancez :
+
+```powershell
+& "$env:WILDFLY_HOME\bin\jboss-cli.bat" --connect --file="scripts\configure-supabase-datasource.cli"
 ```
 
-Ne copiez pas de vrais identifiants dans le dépôt. Préférez un credential store WildFly ou une expression d’environnement adaptée à la configuration du serveur. Le pilote PostgreSQL doit être installé côté WildFly ; la dépendance `jakarta.jakartaee-api` ne l’inclut pas.
+La commande doit terminer le test de connexion avec succès avant le déploiement du WAR. Si `$env:WILDFLY_HOME` n’est pas défini, remplacez-le par le chemin du dossier d’installation de WildFly. Si le WAR avait déjà échoué au déploiement à cause de la datasource manquante, redéployez-le après la réussite du test. Si `SupabaseDS` existe déjà, ne relancez pas `data-source add` : vérifiez dans la console d’administration que son JNDI est `java:/jdbc/SupabaseDS`, que le pilote et les identifiants sont corrects, puis testez la connexion. La dépendance `jakarta.jakartaee-api` ne fournit pas le pilote PostgreSQL.
 
 La colonne `users.password_hash` doit contenir une empreinte BCrypt reconnue par jBCrypt, généralement au format `$2a$...`. L’inscription appelle `BCrypt.hashpw` avec un sel aléatoire et un coût de 12 pour que le mot de passe nouvellement créé soit compatible avec `LoginServlet`. Le stockage en clair ou avec `String.hashCode()` a été écarté : ce ne serait ni suffisamment sûr ni compatible avec la vérification BCrypt du login. Les comptes Supabase Auth ne deviennent pas automatiquement des comptes utilisables par cette authentification.
 
@@ -72,7 +77,7 @@ La colonne `users.role` doit contenir les valeurs exactes `ADMIN`, `PROGRAM_MANA
 ## Compilation et intégration NetBeans / WildFly
 
 1. Ouvrir le projet comme projet Maven dans NetBeans et laisser Maven télécharger jBCrypt.
-2. Installer le pilote PostgreSQL dans WildFly et configurer le JNDI `java:/jdbc/SupabaseDS` comme indiqué plus haut.
+2. Installer le pilote PostgreSQL, démarrer WildFly avec les variables d’environnement Supabase, puis exécuter le script CLI décrit plus haut.
 3. Vérifier dans Supabase que la table `users` correspond aux entités générées et que les comptes ont les champs obligatoires.
 4. Compiler avec `mvn clean package`, puis déployer le WAR sur un serveur compatible Jakarta EE 11 et Java 17.
 5. Ouvrir `/register` pour créer un compte étudiant ou `/login` pour se connecter.

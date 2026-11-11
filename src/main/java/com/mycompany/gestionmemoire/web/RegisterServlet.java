@@ -32,7 +32,7 @@ public class RegisterServlet extends HttpServlet {
         || email.isBlank()
         || email.length() > 254
         || !emailValide(email)
-        || !RegistrationService.motDePasseValide(motDePasse)
+        || !registrationService.motDePasseValide(motDePasse)
         || !SessionUtil.STUDENT.equals(role)) {
       request.setAttribute(
           "erreur",

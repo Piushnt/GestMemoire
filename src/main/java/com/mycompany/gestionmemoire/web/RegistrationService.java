@@ -40,7 +40,7 @@ public class RegistrationService {
     return true;
   }
 
-  public static boolean motDePasseValide(String motDePasse) {
+  public boolean motDePasseValide(String motDePasse) {
     if (motDePasse == null || motDePasse.length() < 8) {
       return false;
     }
