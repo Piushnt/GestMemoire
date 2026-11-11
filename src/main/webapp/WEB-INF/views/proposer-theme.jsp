@@ -85,9 +85,9 @@
                 <div class="info-box">
                     <span class="info-mark">i</span>
                     <p>
-                        En mode démonstration, les mots-clés sont comparés à des exemples et aux
-                        propositions de cette session avec l’indice de Jaccard. À partir de 40 %, le
-                        résultat indicatif est classé en arbitrage. Rien n’est enregistré dans Supabase.
+                        Le titre, la description et les mots-clés sont comparés aux thèmes proposés
+                        depuis le démarrage de l’application. À partir de 40 %, le résultat est classé
+                        en arbitrage. Les propositions en mémoire seront effacées au redémarrage.
                     </p>
                 </div>
 
